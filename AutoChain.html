@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Registrasi Kendaraan & Riwayat Perawatan Mobil Berbasis Blockchain</title>
+<style>
+  /* Reset and base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0; padding: 0;
+    background: #121212;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+  h1, h2 {
+    color: #00c8ff;
+    text-shadow: 0 0 5px #00c8ff;
+  }
+  .container {
+    max-width: 900px;
+    width: 100%;
+    margin: 1rem auto;
+    background: #1e1e1e;
+    border-radius: 10px;
+    box-shadow: 0 0 15px #00c8ff44;
+    padding: 1.5rem 2rem;
+  }
+  form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  label {
+    flex: 1 1 150px;
+    display: flex;
+    flex-direction: column;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #00a5cc;
+  }
+  input, select, textarea, button {
+    margin-top: 0.35rem;
+    padding: 0.5rem 0.6rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+  }
+  input, select, textarea {
+    background: #2c2c2c;
+    color: #e0e0e0;
+    transition: background-color 0.3s ease;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid #00c8ff;
+    background: #1a1a1a;
+  }
+  button {
+    background: #00c8ff;
+    color: #121212;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.7rem 1.2rem;
+    transition: background-color 0.3s ease;
+    flex: 1 1 100%;
+    max-width: 200px;
+    align-self: flex-end;
+  }
+  button:hover {
+    background: #00a1e6;
+  }
+  .blocks-container {
+    margin-top: 1rem;
+    max-height: 350px;
+    overflow-y: auto;
+    background: #232323;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .block {
+    background: #111827;
+    border: 1px solid #00c8ff88;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: monospace, monospace;
+    box-shadow: 0 0 10px #00c8ff33 inset;
+  }
+  .block-header {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color:#00ffff;
+  }
+  .block-content {
+    margin-bottom: 0.3rem;
+  }
+  .hash {
+    color: #777;
+    font-size: 0.8rem;
+    word-break: break-all;
+  }
+  footer {
+    margin-top: auto;
+    padding: 1rem 0;
+    font-size: 0.8rem;
+    color: #555;
+    user-select: none;
+  }
+  @media (max-width:600px) {
+    form label {
+      flex: 1 1 100%;
+    }
+    button {
+      max-width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Registrasi Kendaraan & Riwayat Perawatan Kendaraan Berbasis Blockchain</h1>
+</header>
+<main class="container">
+  <section>
+    <h2>Registrasi Kendaraan</h2>
+    <form id="registerForm" autocomplete="off">
+      <label>
+        Nama Pemilik
+        <input type="text" id="ownerName" required placeholder="Nama lengkap" />
+      </label>
+      <label>
+        Nomor Kendaraan
+        <input type="text" id="vehicleId" required placeholder="Nomor polisi / VIN" />
+      </label>
+      <label>
+        Merek & Model
+        <input type="text" id="model" required placeholder="Nissan GT R35 Nismo, dll." />
+      </label>
+      <label>
+        Tahun Pembuatan
+        <input type="number" id="year" min="1900" max="2099" value="2025" required />
+      </label>
+      <button type="submit">Daftar Kendaraan</button>
+    </form>
+  </section>
+  <section>
+    <h2>Catat Riwayat Perawatan</h2>
+    <form id="maintenanceForm" autocomplete="off">
+      <label>
+        Nomor Kendaraan
+        <select id="vehicleSelect" required><option value="" disabled selected>Pilih kendaraan</option></select>
+      </label>
+      <label style="flex: 2 1 100%;">
+        Deskripsi Perawatan
+        <textarea id="maintenanceDesc" rows="2" required placeholder="Ganti oli, periksa rem, dll."></textarea>
+      </label>
+      <label>
+        Tanggal Perawatan
+        <input type="date" id="maintenanceDate" required />
+      </label>
+      <button type="submit">Tambah Riwayat</button>
+    </form>
+  </section>
+  <section>
+    <h2>Riwayat Perawatan Kendaraan Berbasis Blockchain</h2>
+    <div id="blocks" class="blocks-container" aria-live="polite" aria-label="Blockchain Entries"></div>
+  </section>
+</main>
+<footer>
+  &copy; 2025 by Blockchain Vehicle Registry
+</footer>
+<script>
+  (() => {
+    'use strict';
+
+    // Simple SHA-256 hashing using crypto.subtle API
+    async function sha256(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashHex;
+    }
+
+    class Block {
+      constructor(index, timestamp, data, previousHash = '') {
+        this.index = index;
+        this.timestamp = timestamp;
+        this.data = data; // Object with record info
+        this.previousHash = previousHash;
+        this.hash = '';
+      }
+
+      async calculateHash() {
+        const dataString = JSON.stringify(this.data);
+        const toHash = this.index + this.timestamp + dataString + this.previousHash;
+        this.hash = await sha256(toHash);
+        return this.hash;
+      }
+    }
+
+    class Blockchain {
+      constructor() {
+        this.chain = [];
+      }
+
+      async createGenesisBlock() {
+        let genesisBlock = new Block(0, new Date().toISOString(), {info: 'Genesis Block'}, "0");
+        await genesisBlock.calculateHash();
+        this.chain.push(genesisBlock);
+      }
+
+      getLatestBlock() {
+        return this.chain[this.chain.length - 1];
+      }
+
+      async addBlock(newBlock) {
+        newBlock.previousHash = this.getLatestBlock().hash;
+        await newBlock.calculateHash();
+        this.chain.push(newBlock);
+      }
+
+      isChainValid() {
+        for(let i = 1; i < this.chain.length; i++) {
+          const currentBlock = this.chain[i];
+          const prevBlock = this.chain[i - 1];
+          if(currentBlock.previousHash !== prevBlock.hash) return false;
+          // We could also recheck hash if needed
+        }
+        return true;
+      }
+    }
+
+    // UI & App Logic
+    const blockchain = new Blockchain();
+
+    const registerForm = document.getElementById('registerForm');
+    const maintenanceForm = document.getElementById('maintenanceForm');
+    const blocksContainer = document.getElementById('blocks');
+    const vehicleSelect = document.getElementById('vehicleSelect');
+
+    // Store vehicles for selection and maintenance association
+    const vehicles = new Map();
+
+    function addVehicleToSelect(vehicleId, displayText) {
+      const option = document.createElement('option');
+      option.value = vehicleId;
+      option.textContent = displayText;
+      vehicleSelect.appendChild(option);
+    }
+
+    // Render a block UI element
+    function renderBlock(block) {
+      const blockEl = document.createElement('div');
+      blockEl.classList.add('block');
+
+      const heading = document.createElement('div');
+      heading.className = 'block-header';
+      heading.textContent = `Block #${block.index} - ${new Date(block.timestamp).toLocaleString()}`;
+      blockEl.appendChild(heading);
+
+      const dataDiv = document.createElement('div');
+      dataDiv.className = 'block-content';
+      if (block.index === 0) {
+        dataDiv.textContent = '[Genesis Block]';
+        blockEl.appendChild(dataDiv);
+      } else {
+        // Depending on block type: registration or maintenance
+        if (block.data.type === 'registration') {
+          dataDiv.innerHTML = `<strong>Registrasi Kendaraan:</strong><br/>
+            Pemilik: ${block.data.ownerName}<br/>
+            Nomor Kendaraan: ${block.data.vehicleId}<br/>
+            Merek & Model: ${block.data.model}<br/>
+            Tahun: ${block.data.year}`;
+          blockEl.appendChild(dataDiv);
+        } else if (block.data.type === 'maintenance') {
+          dataDiv.innerHTML = `<strong>Riwayat Perawatan:</strong><br/>
+            Nomor Kendaraan: ${block.data.vehicleId}<br/>
+            Deskripsi: ${block.data.description}<br/>
+            Tanggal: ${new Date(block.data.date).toLocaleDateString()}`;
+          blockEl.appendChild(dataDiv);
+        } else {
+          dataDiv.textContent = JSON.stringify(block.data);
+          blockEl.appendChild(dataDiv);
+        }
+      }
+
+      const hashDiv = document.createElement('div');
+      hashDiv.className = 'hash';
+      hashDiv.textContent = `Hash: ${block.hash}`;
+      blockEl.appendChild(hashDiv);
+
+      const prevHashDiv = document.createElement('div');
+      prevHashDiv.className = 'hash';
+      prevHashDiv.textContent = `Previous Hash: ${block.previousHash}`;
+      blockEl.appendChild(prevHashDiv);
+
+      return blockEl;
+    }
+
+    async function renderBlockchain() {
+      blocksContainer.innerHTML = '';
+      for(const block of blockchain.chain) {
+        const blockEl = renderBlock(block);
+        blocksContainer.appendChild(blockEl);
+      }
+    }
+
+    async function addRegistrationRecord(formData) {
+      const { ownerName, vehicleId, model, year } = formData;
+      if(vehicles.has(vehicleId)) {
+        alert('Nomor kendaraan sudah terdaftar!');
+        return;
+      }
+      const newBlock = new Block(blockchain.chain.length,
+        new Date().toISOString(),
+        {
+          type: 'registration',
+          ownerName,
+          vehicleId,
+          model,
+          year
+        }
+      );
+      await blockchain.addBlock(newBlock);
+      vehicles.set(vehicleId, {ownerName, model, year});
+      addVehicleToSelect(vehicleId, `${vehicleId} - ${model} (${ownerName})`);
+      renderBlockchain();
+    }
+
+    async function addMaintenanceRecord(formData) {
+      const { vehicleId, description, date } = formData;
+      if(!vehicles.has(vehicleId)) {
+        alert('Nomor kendaraan belum terdaftar!');
+        return;
+      }
+      const newBlock = new Block(blockchain.chain.length,
+        new Date().toISOString(),
+        {
+          type: 'maintenance',
+          vehicleId,
+          description,
+          date
+        }
+      );
+      await blockchain.addBlock(newBlock);
+      renderBlockchain();
+    }
+
+    // Initialize blockchain with genesis block
+    (async () => {
+      await blockchain.createGenesisBlock();
+      renderBlockchain();
+    })();
+
+    // Form event listeners
+    registerForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const ownerName = document.getElementById('ownerName').value.trim();
+      const vehicleId = document.getElementById('vehicleId').value.trim();
+      const model = document.getElementById('model').value.trim();
+      const year = document.getElementById('year').value;
+
+      if(!ownerName || !vehicleId || !model || !year) {
+        alert('Mohon isi semua kolom registrasi!');
+        return;
+      }
+
+      await addRegistrationRecord({ ownerName, vehicleId, model, year });
+
+      registerForm.reset();
+    });
+
+    maintenanceForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const vehicleId = document.getElementById('vehicleSelect').value;
+      const description = document.getElementById('maintenanceDesc').value.trim();
+      const date = document.getElementById('maintenanceDate').value;
+
+      if(!vehicleId || !description || !date) {
+        alert('Mohon isi semua kolom riwayat perawatan!');
+        return;
+      }
+
+      await addMaintenanceRecord({ vehicleId, description, date });
+
+      maintenanceForm.reset();
+      vehicleSelect.value = '';
+    });
+  })();
+</script>
+</body>
+</html>
